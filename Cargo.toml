@@ -1,0 +1,11 @@
+[package]
+name = "perf_client"
+version = "0.1.0"
+authors = ["Ryo Ohki <roki.swindler@gmail.com>"]
+build = "build.rs"
+
+[dependencies]
+winapi = "0.2.8"
+
+[dependencies.pdh-sys]
+path = "../winapi-rs/lib/pdh"

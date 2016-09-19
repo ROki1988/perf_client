@@ -7,7 +7,7 @@ fn main() {
     let path_list = vec!["\\Memory\\Available Mbytes"];
     if let Some(pdhc) = PdhControler::new(path_list) {
         
-        let m = pdhc.get_current_values();
+        let m = pdhc.current_values();
 
         println!("{:?}", m);
     }
@@ -24,23 +24,22 @@ impl PdhControler {
     fn new(path: Vec<&str>) -> Option<PdhControler> {
         pdh_open_query()
             .map(|q| {
-                PdhControler {
+                let cs = path.into_iter()
+                        .filter_map(|p| pdh_add_counter(q, p).ok())
+                        .collect();
+                PdhControler{
                     hquery: q,
-                    hcounters: path.into_iter()
-                        .map(|p| pdh_add_counter(q, p))
-                        .flat_map(|c| c)
-                        .collect(),
+                    hcounters: cs,
                 }
             }).ok()
     } 
 
-    fn get_current_values(&self) -> Vec<PdhValue> {
+    fn current_values(&self) -> Vec<PdhValue> {
         pdh_collect_query_data(self.hquery);
         self.hcounters.iter()
-            .map(|&c| pdh_get_formatted_counter_value(c, PDH_FMT_DOUBLE))
-            .flat_map(|v| v)
+            .filter_map(|&c| pdh_get_formatted_counter_value(c, PDH_FMT_DOUBLE).ok())
             .collect()
-    } 
+    }
 }
 
 impl Drop for PdhControler {
@@ -99,9 +98,15 @@ fn to_value(s: PDH_FMT_COUNTERVALUE, format: winapi::DWORD) -> PdhValue {
     }
 }
 
-fn pdh_close_query(hquery: PDH_HQUERY) -> bool {
+fn pdh_close_query(hquery: PDH_HQUERY) -> Result<(), winapi::PDH_STATUS> {
     unsafe {
-        winapi::winerror::SUCCEEDED(pdh::PdhCloseQuery(hquery))
+        let ret = pdh::PdhCloseQuery(hquery);
+        if winapi::winerror::SUCCEEDED(ret) {
+            Ok(())
+        }
+        else {
+            Err(ret)
+        }
     }    
 }
 

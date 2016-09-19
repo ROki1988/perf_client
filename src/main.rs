@@ -6,7 +6,7 @@ use winapi::pdh::*;
 fn main() {
     let path_list = vec!["\\Memory\\Available Mbytes"];
 
-    if let Some(pdhc) = PdhControler::new(path_list) {
+    if let Some(pdhc) = PdhController::new(path_list) {
 
         let m = pdhc.current_values();
 
@@ -16,19 +16,19 @@ fn main() {
 
 
 #[derive(Debug)]
-struct PdhControler {
+struct PdhController {
     hquery: winapi::PDH_HQUERY,
     hcounters: Vec<winapi::PDH_HCOUNTER>,
 }
 
-impl PdhControler {
-    fn new(path: Vec<&str>) -> Option<PdhControler> {
+impl PdhController {
+    fn new(path: Vec<&str>) -> Option<PdhController> {
         pdh_open_query()
             .map(|q| {
                 let cs = path.into_iter()
                     .filter_map(|p| pdh_add_counter(q, p).ok())
                     .collect();
-                PdhControler {
+                PdhController {
                     hquery: q,
                     hcounters: cs,
                 }
@@ -45,30 +45,30 @@ impl PdhControler {
     }
 }
 
-impl IntoIterator for PdhControler {
+impl IntoIterator for PdhController {
     type Item = PdhValue;
-    type IntoIter = PdhControlerIntoIterator;
+    type IntoIter = PdhControllerIntoIterator;
 
     fn into_iter(self) -> Self::IntoIter {
-        PdhControlerIntoIterator {
+        PdhControllerIntoIterator {
             pdhc: self,
             index: 0,
         }
     }
 }
 
-impl Drop for PdhControler {
+impl Drop for PdhController {
     fn drop(&mut self) {
         pdh_close_query(self.hquery);
     }
 }
 
-struct PdhControlerIntoIterator {
-    pdhc: PdhControler,
+struct PdhControllerIntoIterator {
+    pdhc: PdhController,
     index: usize,
 }
 
-impl Iterator for PdhControlerIntoIterator {
+impl Iterator for PdhControllerIntoIterator {
     type Item = PdhValue;
     fn next(&mut self) -> Option<PdhValue> {
         if self.index == 0 {

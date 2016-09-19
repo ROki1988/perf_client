@@ -5,8 +5,9 @@ use winapi::pdh::*;
 
 fn main() {
     let path_list = vec!["\\Memory\\Available Mbytes"];
+
     if let Some(pdhc) = PdhControler::new(path_list) {
-        
+
         let m = pdhc.current_values();
 
         println!("{:?}", m);
@@ -25,64 +26,105 @@ impl PdhControler {
         pdh_open_query()
             .map(|q| {
                 let cs = path.into_iter()
-                        .filter_map(|p| pdh_add_counter(q, p).ok())
-                        .collect();
-                PdhControler{
+                    .filter_map(|p| pdh_add_counter(q, p).ok())
+                    .collect();
+                PdhControler {
                     hquery: q,
                     hcounters: cs,
                 }
-            }).ok()
-    } 
+            })
+            .ok()
+    }
 
     fn current_values(&self) -> Vec<PdhValue> {
         pdh_collect_query_data(self.hquery);
-        self.hcounters.iter()
+        self.hcounters
+            .iter()
             .filter_map(|&c| pdh_get_formatted_counter_value(c, PDH_FMT_DOUBLE).ok())
             .collect()
     }
 }
 
-impl Drop for PdhControler {
-    fn drop(&mut self) {
-        pdh_close_query(self.hquery);        
+impl IntoIterator for PdhControler {
+    type Item = PdhValue;
+    type IntoIter = PdhControlerIntoIterator;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PdhControlerIntoIterator {
+            pdhc: self,
+            index: 0,
+        }
     }
 }
+
+impl Drop for PdhControler {
+    fn drop(&mut self) {
+        pdh_close_query(self.hquery);
+    }
+}
+
+struct PdhControlerIntoIterator {
+    pdhc: PdhControler,
+    index: usize,
+}
+
+impl Iterator for PdhControlerIntoIterator {
+    type Item = PdhValue;
+    fn next(&mut self) -> Option<PdhValue> {
+        if self.index == 0 {
+            pdh_collect_query_data(self.pdhc.hquery);
+        }
+
+        let v = self.pdhc
+            .hcounters
+            .get(self.index)
+            .map(|c| pdh_get_formatted_counter_value(*c, PDH_FMT_DOUBLE).ok());
+        match v {
+            Some(Some(a)) => Some(a),
+            _ => None,
+        }
+    }
+}
+
 
 #[derive(Debug)]
 enum PdhValue {
     LongLong(i64),
-    Long(i32), 
-    Double(f64), 
-    Str(String)
+    Long(i32),
+    Double(f64),
+    Str(String),
 }
 
 fn pdh_open_query() -> Result<winapi::PDH_HQUERY, winapi::PDH_STATUS> {
     use std::ptr;
-    let mut hquery = winapi::INVALID_HANDLE_VALUE;   
+    let mut hquery = winapi::INVALID_HANDLE_VALUE;
     unsafe {
         let ret = pdh::PdhOpenQueryW(ptr::null(), 0, &mut hquery);
         if winapi::winerror::SUCCEEDED(ret) {
             Ok(hquery)
-        }else {
+        } else {
             Err(ret)
         }
-    }    
-}
-
-fn pdh_collect_query_data(hquery: winapi::PDH_HQUERY) -> bool {
-    unsafe {
-        winapi::winerror::SUCCEEDED(pdh::PdhCollectQueryData(hquery))
     }
 }
 
-fn pdh_get_formatted_counter_value(hcounter: winapi::PDH_HCOUNTER, format: winapi::DWORD) -> Result<PdhValue, winapi::PDH_STATUS> {
-    let mut s = winapi::PDH_FMT_COUNTERVALUE {CStatus: 0, largeValue: 0};
+fn pdh_collect_query_data(hquery: winapi::PDH_HQUERY) -> bool {
+    unsafe { winapi::winerror::SUCCEEDED(pdh::PdhCollectQueryData(hquery)) }
+}
+
+fn pdh_get_formatted_counter_value(hcounter: winapi::PDH_HCOUNTER,
+                                   format: winapi::DWORD)
+                                   -> Result<PdhValue, winapi::PDH_STATUS> {
+    let mut s = winapi::PDH_FMT_COUNTERVALUE {
+        CStatus: 0,
+        largeValue: 0,
+    };
     unsafe {
         let mut devnul: winapi::DWORD = 0;
         let ret = pdh::PdhGetFormattedCounterValue(hcounter, format, &mut devnul, &mut s);
         if winapi::winerror::SUCCEEDED(ret) {
             Ok(to_value(s, format))
-        }else {
+        } else {
             Err(ret)
         }
     }
@@ -94,7 +136,7 @@ fn to_value(s: PDH_FMT_COUNTERVALUE, format: winapi::DWORD) -> PdhValue {
             PDH_FMT_DOUBLE => PdhValue::Double(*s.doubleValue()),
             PDH_FMT_LONG => PdhValue::Long(*s.longValue()),
             PDH_FMT_LONGLONG => PdhValue::LongLong(*s.largeValue()),
-        }    
+        }
     }
 }
 
@@ -103,23 +145,27 @@ fn pdh_close_query(hquery: PDH_HQUERY) -> Result<(), winapi::PDH_STATUS> {
         let ret = pdh::PdhCloseQuery(hquery);
         if winapi::winerror::SUCCEEDED(ret) {
             Ok(())
-        }
-        else {
+        } else {
             Err(ret)
         }
-    }    
+    }
 }
 
-fn pdh_add_counter(hquery: winapi::PDH_HQUERY, counter_path: &str) -> Result<winapi::PDH_HCOUNTER, winapi::PDH_STATUS> {
-    let mut hcounter = winapi::INVALID_HANDLE_VALUE;   
+fn pdh_add_counter(hquery: winapi::PDH_HQUERY,
+                   counter_path: &str)
+                   -> Result<winapi::PDH_HCOUNTER, winapi::PDH_STATUS> {
+    let mut hcounter = winapi::INVALID_HANDLE_VALUE;
     unsafe {
-        let ret = pdh::PdhAddCounterW(hquery, to_wide_chars(counter_path).as_ptr(), 0, &mut hcounter);
+        let ret = pdh::PdhAddCounterW(hquery,
+                                      to_wide_chars(counter_path).as_ptr(),
+                                      0,
+                                      &mut hcounter);
         if winapi::winerror::SUCCEEDED(ret) {
             Ok(hcounter)
-        }else {
+        } else {
             Err(ret)
         }
-    }    
+    }
 }
 
 fn to_wide_chars(s: &str) -> Vec<u16> {

@@ -7,13 +7,11 @@ fn main() {
     let path_list = vec!["\\Memory\\Available Mbytes"];
 
     if let Some(pdhc) = PdhController::new(path_list) {
-
-        let m = pdhc.current_values();
-
-        println!("{:?}", m);
+        for v in pdhc.into_iter() {
+            println!("{:?}", v);
+        }
     }
 }
-
 
 #[derive(Debug)]
 struct PdhController {
@@ -79,6 +77,7 @@ impl Iterator for PdhControllerIntoIterator {
             .hcounters
             .get(self.index)
             .map(|c| pdh_get_formatted_counter_value(*c, PDH_FMT_DOUBLE).ok());
+        self.index += 1;
         match v {
             Some(Some(a)) => Some(a),
             _ => None,

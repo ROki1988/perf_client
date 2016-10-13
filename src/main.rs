@@ -7,9 +7,16 @@ fn main() {
     let path_list = vec!["\\Memory\\Available Mbytes"];
 
     if let Some(pdhc) = PdhController::new(path_list) {
-        for v in pdhc.into_iter() {
-            println!("{:?}", v);
-        }
+        println!("{:?}", pdhc.into_iter().map(|v| pdh_value2str(v)).collect::<Vec<_>>());
+    }
+}
+
+fn pdh_value2str(v: PdhValue) -> String {
+    match v {
+        PdhValue::LongLong(ll) => format!("{:.3}", ll),
+        PdhValue::Long(l) => format!("{:.3}", l),
+        PdhValue::Double(d) => format!("{:.3}", d),
+        PdhValue::Str(s) => s,
     }
 }
 
@@ -61,6 +68,7 @@ impl Drop for PdhController {
     }
 }
 
+#[derive(Debug)]
 struct PdhControllerIntoIterator {
     pdhc: PdhController,
     index: usize,
@@ -87,6 +95,7 @@ impl Iterator for PdhControllerIntoIterator {
 
 
 #[derive(Debug)]
+#[allow(dead_code)]
 enum PdhValue {
     LongLong(i64),
     Long(i32),

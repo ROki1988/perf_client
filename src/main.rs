@@ -5,12 +5,9 @@ use winapi::pdh::*;
 
 fn main() {
     let element_list = vec![PdhCounterPathElement {
-                                MachineName: None,
                                 ObjectName: String::from("Memory"),
-                                ParentInstance: None,
-                                InstanceIndex: None,
-                                InstanceName: None,
                                 CounterName: String::from("Available Mbytes"),
+                                ..Default::default()
                             }];
 
     let path_list = element_list.into_iter()
@@ -113,7 +110,7 @@ enum PdhValue {
     Str(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct PdhCounterPathElement {
     MachineName: Option<String>,
     ObjectName: String,

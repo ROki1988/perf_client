@@ -5,8 +5,8 @@ use winapi::pdh::*;
 
 fn main() {
     let element_list = vec![PdhCounterPathElement {
-                                ObjectName: String::from("Memory"),
-                                CounterName: String::from("Available Mbytes"),
+                                object_name: String::from("Memory"),
+                                counter_name: String::from("Available Mbytes"),
                                 ..Default::default()
                             }];
 
@@ -112,12 +112,12 @@ enum PdhValue {
 
 #[derive(Debug, Default)]
 struct PdhCounterPathElement {
-    MachineName: Option<String>,
-    ObjectName: String,
-    ParentInstance: Option<String>,
-    InstanceIndex: Option<u32>,
-    InstanceName: Option<String>,
-    CounterName: String,
+    machine_name: Option<String>,
+    object_name: String,
+    parent_instance: Option<String>,
+    instance_index: Option<u32>,
+    instance_name: Option<String>,
+    counter_name: String,
 }
 
 fn pdh_open_query() -> Result<winapi::PDH_HQUERY, winapi::PDH_STATUS> {
@@ -196,26 +196,26 @@ fn pdh_add_counter(hquery: winapi::PDH_HQUERY,
 fn pdh_make_counter_path(element: &PdhCounterPathElement) -> Result<String, winapi::PDH_STATUS> {
     use std::ptr;
 
-    let mut ObjectName = to_wide_chars(element.ObjectName.as_str());
-    let mut CounterName = to_wide_chars(element.CounterName.as_str());
+    let mut object_name = to_wide_chars(element.object_name.as_str());
+    let mut counter_name = to_wide_chars(element.counter_name.as_str());
 
-    let mut MachineName = element.MachineName
+    let machine_name = element.machine_name
         .clone()
         .map(|s| to_wide_chars(s.as_str()));
-    let mut InstanceName = element.InstanceName
+    let instance_name = element.instance_name
         .clone()
         .map(|s| to_wide_chars(s.as_str()));
-    let mut ParentInstance = element.ParentInstance
+    let parent_instance = element.parent_instance
         .clone()
         .map(|s| to_wide_chars(s.as_str()));
 
     let mut mut_element = PDH_COUNTER_PATH_ELEMENTS_W {
-        szMachineName: MachineName.map_or(ptr::null_mut::<u16>(), |mut v| v.as_mut_ptr()),
-        szObjectName: ObjectName.as_mut_ptr(),
-        szCounterName: CounterName.as_mut_ptr(),
-        szInstanceName: InstanceName.map_or(ptr::null_mut::<u16>(), |mut v| v.as_mut_ptr()),
-        szParentInstance: ParentInstance.map_or(ptr::null_mut::<u16>(), |mut v| v.as_mut_ptr()),
-        dwInstanceIndex: element.InstanceIndex.unwrap_or(0),
+        szMachineName: machine_name.map_or(ptr::null_mut::<u16>(), |mut v| v.as_mut_ptr()),
+        szObjectName: object_name.as_mut_ptr(),
+        szCounterName: counter_name.as_mut_ptr(),
+        szInstanceName: instance_name.map_or(ptr::null_mut::<u16>(), |mut v| v.as_mut_ptr()),
+        szParentInstance: parent_instance.map_or(ptr::null_mut::<u16>(), |mut v| v.as_mut_ptr()),
+        dwInstanceIndex: element.instance_index.unwrap_or(0),
     };
 
     let mut buff_size = try!(pdh_get_counter_path_buff_size(&mut mut_element));

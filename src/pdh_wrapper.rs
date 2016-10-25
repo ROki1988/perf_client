@@ -24,14 +24,6 @@ impl PdhController {
             })
             .ok()
     }
-
-    pub fn current_values(&self) -> Vec<PdhValue> {
-        pdh_collect_query_data(self.hquery);
-        self.hcounters
-            .iter()
-            .filter_map(|&c| pdh_get_formatted_counter_value(c, PDH_FMT_DOUBLE).ok())
-            .collect()
-    }
 }
 
 impl IntoIterator for PdhController {

@@ -11,7 +11,7 @@ fn main() {
                                         String::from("Available Mbytes"),
                                         PdhCounterPathElementOptions { ..Default::default() })];
 
-    let pdhc = PdhController::new(&element_list).expect("Can't create Metrics Collector");
+    let pdhc = PdhController::new(element_list).expect("Can't create Metrics Collector");
     println!("{:?}",
              pdhc.into_iter().map(|v| v.to_string()).collect::<Vec<_>>());
 }

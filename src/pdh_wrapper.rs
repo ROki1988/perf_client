@@ -5,19 +5,35 @@ use std;
 use winapi::pdh::*;
 
 #[derive(Debug)]
+pub struct PdhCollectionItem {
+    element: PdhCounterPathElement,
+    hcounter: winapi::PDH_HCOUNTER,
+}
+
+#[derive(Debug)]
 pub struct PdhController {
     hquery: winapi::PDH_HQUERY,
-    hcounters: Vec<winapi::PDH_HCOUNTER>,
+    hcounters: Vec<PdhCollectionItem>,
 }
 
 impl PdhController {
-    pub fn new(path: &Vec<PdhCounterPathElement>) -> Option<PdhController> {
+    pub fn new(path: Vec<PdhCounterPathElement>) -> Option<PdhController> {
         pdh_open_query()
             .map(|q| {
                 let cs = path.into_iter()
-                    .filter_map(|e| pdh_make_counter_path(&e).ok())
-                    .filter_map(|p| pdh_add_counter(q, p.as_str()).ok())
-                    .collect();
+                    .filter_map(|e| {
+                        let add_counter = |p: String| pdh_add_counter(q, p.as_str());
+                        pdh_make_counter_path(&e)
+                            .and_then(add_counter)
+                            .map(|c| {
+                                PdhCollectionItem {
+                                    element: e,
+                                    hcounter: c,
+                                }
+                            })
+                            .ok()
+                    })
+                    .collect::<Vec<_>>();
                 PdhController {
                     hquery: q,
                     hcounters: cs,
@@ -61,7 +77,7 @@ impl Iterator for PdhControllerIntoIterator {
         let v = self.pdhc
             .hcounters
             .get(self.index)
-            .map(|c| pdh_get_formatted_counter_value(*c, PDH_FMT_DOUBLE).ok());
+            .map(|c| pdh_get_formatted_counter_value(c.hcounter, PDH_FMT_DOUBLE).ok());
         self.index += 1;
         match v {
             Some(Some(a)) => Some(a),

@@ -22,9 +22,8 @@ impl PdhController {
             .map(|q| {
                 let cs = path.into_iter()
                     .filter_map(|e| {
-                        let add_counter = |p: String| pdh_add_counter(q, p.as_str());
                         pdh_make_counter_path(&e)
-                            .and_then(add_counter)
+                            .and_then(|p| pdh_add_counter(q, p.as_str()))
                             .map(|c| {
                                 PdhCollectionItem {
                                     element: e,

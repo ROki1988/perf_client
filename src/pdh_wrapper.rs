@@ -11,11 +11,12 @@ pub struct PdhController {
 }
 
 impl PdhController {
-    pub fn new(path: &Vec<String>) -> Option<PdhController> {
+    pub fn new(path: &Vec<PdhCounterPathElement>) -> Option<PdhController> {
         pdh_open_query()
             .map(|q| {
                 let cs = path.into_iter()
-                    .filter_map(|p| pdh_add_counter(q, p).ok())
+                    .filter_map(|e| pdh_make_counter_path(&e).ok())
+                    .filter_map(|p| pdh_add_counter(q, p.as_str()).ok())
                     .collect();
                 PdhController {
                     hquery: q,
@@ -80,20 +81,34 @@ pub enum PdhValue {
 
 #[derive(Debug, Default)]
 pub struct PdhCounterPathElement {
-    machine_name: Option<String>,
     object_name: String,
+    counter_name: String,
+    machine_name: Option<String>,
     parent_instance: Option<String>,
     instance_index: Option<u32>,
     instance_name: Option<String>,
-    counter_name: String,
+}
+
+#[derive(Debug, Default)]
+pub struct PdhCounterPathElementOptions {
+    pub machine_name: Option<String>,
+    pub parent_instance: Option<String>,
+    pub instance_index: Option<u32>,
+    pub instance_name: Option<String>,
 }
 
 impl PdhCounterPathElement {
-    pub fn new(o_name: String, c_name: String) -> PdhCounterPathElement {
+    pub fn new(o_name: String,
+               c_name: String,
+               ops: PdhCounterPathElementOptions)
+               -> PdhCounterPathElement {
         PdhCounterPathElement {
             object_name: o_name,
             counter_name: c_name,
-            ..Default::default()
+            machine_name: ops.machine_name,
+            parent_instance: ops.parent_instance,
+            instance_index: ops.instance_index,
+            instance_name: ops.instance_name,
         }
     }
 }

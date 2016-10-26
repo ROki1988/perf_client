@@ -6,14 +6,12 @@ use pdh_wrapper::*;
 
 fn main() {
 
-    let element_list = vec![PdhCounterPathElement::new(String::from("Memory"),
-                                                       String::from("Available Mbytes"))];
+    let element_list =
+        vec![PdhCounterPathElement::new(String::from("Memory"),
+                                        String::from("Available Mbytes"),
+                                        PdhCounterPathElementOptions { ..Default::default() })];
 
-    let path_list = element_list.into_iter()
-        .filter_map(|e| pdh_make_counter_path(&e).ok())
-        .collect::<Vec<_>>();
-
-    let pdhc = PdhController::new(&path_list).expect("Can't create Metrics Collector");
+    let pdhc = PdhController::new(&element_list).expect("Can't create Metrics Collector");
     println!("{:?}",
              pdhc.into_iter().map(|v| v.to_string()).collect::<Vec<_>>());
 }

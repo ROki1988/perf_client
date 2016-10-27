@@ -1,8 +1,13 @@
+#[cfg(windows)]
 extern crate winapi;
+#[cfg(windows)]
 extern crate pdh;
+#[cfg(windows)]
+extern crate widestring;
 
 use std;
 use winapi::pdh::*;
+use widestring::*;
 
 #[derive(Debug)]
 pub struct PdhCollectionItem {
@@ -234,7 +239,7 @@ pub fn pdh_make_counter_path(element: &PdhCounterPathElement)
         let ret = pdh::PdhMakeCounterPathW(&mut mut_element, buff.as_mut_ptr(), &mut buff_size, 0);
         if winapi::winerror::SUCCEEDED(ret) {
             buff.truncate(buff_size as usize);
-            Ok(from_wide_ptr(buff.as_ptr()))
+            Ok(WideString::from_vec(buff).to_string_lossy())
         } else {
             Err(ret)
         }
@@ -261,16 +266,4 @@ fn to_wide_chars(s: &str) -> Vec<u16> {
     use std::os::windows::ffi::OsStrExt;
 
     OsStr::new(s).encode_wide().chain(Some(0).into_iter()).collect::<Vec<_>>()
-}
-
-fn from_wide_ptr(ptr: *const u16) -> String {
-    use std::ffi::OsString;
-    use std::os::windows::ffi::OsStringExt;
-
-    unsafe {
-        assert!(!ptr.is_null());
-        let len = (0..std::isize::MAX).position(|i| *ptr.offset(i) == 0).unwrap();
-        let slice = std::slice::from_raw_parts(ptr, len);
-        OsString::from_wide(slice).to_string_lossy().into_owned()
-    }
 }

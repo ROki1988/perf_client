@@ -1,4 +1,6 @@
 extern crate winapi;
+#[cfg(windows)]
+extern crate widestring;
 
 mod pdh_wrapper;
 

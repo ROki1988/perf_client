@@ -209,9 +209,15 @@ fn pdh_add_counter(hquery: winapi::PDH_HQUERY,
 pub fn pdh_make_counter_path(element: &PdhCounterPathElement)
                              -> Result<String, winapi::PDH_STATUS> {
     use std::ptr;
+    use winapi::winerror;
 
-    let mut object_name = to_wide_chars(element.object_name.as_str());
-    let mut counter_name = to_wide_chars(element.counter_name.as_str());
+    let to_wide_str = |s: &str| {
+        WideCString::from_str(s)
+            .map(|ws| ws.into_vec())
+            .map_err(|e| winerror::ERROR_BAD_ARGUMENTS as i32)
+    };
+    let mut object_name = try!(to_wide_str(element.object_name.as_str()));
+    let mut counter_name = try!(to_wide_str(element.counter_name.as_str()));
 
     let machine_name = element.machine_name
         .clone()

@@ -26,7 +26,7 @@ impl PdhController {
         pdh_open_query()
             .map(|q| {
                 let cs = path.into_iter()
-                    .filter_map(|e| {
+                    .flat_map(|e| {
                         pdh_make_counter_path(&e)
                             .and_then(|p| pdh_add_counter(q, p.as_str()))
                             .map(|c| {
@@ -35,7 +35,6 @@ impl PdhController {
                                     hcounter: c,
                                 }
                             })
-                            .ok()
                     })
                     .collect::<Vec<_>>();
                 PdhController {
@@ -120,15 +119,12 @@ pub enum PdhValue {
 
 #[derive(Debug, Default, Clone)]
 pub struct PdhCounterPathElement {
-    object_name: String,
-    counter_name: String,
-    machine_name: Option<String>,
-    parent_instance: Option<String>,
-    instance_index: Option<u32>,
-    instance_name: Option<String>,
+    pub object_name: String,
+    pub counter_name: String,
+    pub options: PdhCounterPathElementOptions,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct PdhCounterPathElementOptions {
     pub machine_name: Option<String>,
     pub parent_instance: Option<String>,
@@ -144,10 +140,7 @@ impl PdhCounterPathElement {
         PdhCounterPathElement {
             object_name: o_name,
             counter_name: c_name,
-            machine_name: ops.machine_name,
-            parent_instance: ops.parent_instance,
-            instance_index: ops.instance_index,
-            instance_name: ops.instance_name,
+            options: ops,
         }
     }
 }
@@ -238,13 +231,16 @@ pub fn pdh_make_counter_path(element: &PdhCounterPathElement)
     let mut object_name = try!(to_wide_str(element.object_name.as_str()));
     let mut counter_name = try!(to_wide_str(element.counter_name.as_str()));
 
-    let machine_name = element.machine_name
+    let machine_name = element.options
+        .machine_name
         .clone()
         .map(|s| to_wide_chars(s.as_str()));
-    let instance_name = element.instance_name
+    let instance_name = element.options
+        .instance_name
         .clone()
         .map(|s| to_wide_chars(s.as_str()));
-    let parent_instance = element.parent_instance
+    let parent_instance = element.options
+        .parent_instance
         .clone()
         .map(|s| to_wide_chars(s.as_str()));
 
@@ -254,7 +250,7 @@ pub fn pdh_make_counter_path(element: &PdhCounterPathElement)
         szCounterName: counter_name.as_mut_ptr(),
         szInstanceName: instance_name.map_or(ptr::null_mut::<u16>(), |mut v| v.as_mut_ptr()),
         szParentInstance: parent_instance.map_or(ptr::null_mut::<u16>(), |mut v| v.as_mut_ptr()),
-        dwInstanceIndex: element.instance_index.unwrap_or(0),
+        dwInstanceIndex: element.options.instance_index.unwrap_or(0),
     };
 
     let mut buff_size = try!(pdh_get_counter_path_buff_size(&mut mut_element));

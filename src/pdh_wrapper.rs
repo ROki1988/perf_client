@@ -18,7 +18,7 @@ pub struct PdhCollectionItem {
 #[derive(Debug)]
 pub struct PdhController {
     hquery: winapi::PDH_HQUERY,
-    hcounters: Vec<PdhCollectionItem>,
+    items: Vec<PdhCollectionItem>,
 }
 
 impl PdhController {
@@ -40,7 +40,7 @@ impl PdhController {
                     .collect::<Vec<_>>();
                 PdhController {
                     hquery: q,
-                    hcounters: cs,
+                    items: cs,
                 }
             })
             .ok()
@@ -48,7 +48,7 @@ impl PdhController {
 }
 
 impl IntoIterator for PdhController {
-    type Item = PdhValue;
+    type Item = PdhCollectValue;
     type IntoIter = PdhControllerIntoIterator;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -72,23 +72,42 @@ pub struct PdhControllerIntoIterator {
 }
 
 impl Iterator for PdhControllerIntoIterator {
-    type Item = PdhValue;
-    fn next(&mut self) -> Option<PdhValue> {
+    type Item = PdhCollectValue;
+    fn next(&mut self) -> Option<PdhCollectValue> {
         if self.index == 0 {
             pdh_collect_query_data(self.pdhc.hquery);
         }
 
         let v = self.pdhc
-            .hcounters
+            .items
             .get(self.index)
-            .map(|c| pdh_get_formatted_counter_value(c.hcounter, PDH_FMT_DOUBLE).ok());
+            .iter()
+            .flat_map(|c| {
+                pdh_get_formatted_counter_value(c.hcounter, PDH_FMT_DOUBLE).map(|v| {
+                    PdhCollectValue {
+                        element: c.element.clone(),
+                        value: v,
+                    }
+                })
+            })
+            .last();
         self.index += 1;
-        match v {
-            Some(Some(a)) => Some(a),
-            _ => None,
-        }
+        v
     }
 }
+
+#[derive(Debug)]
+pub struct PdhCollectValue {
+    element: PdhCounterPathElement,
+    value: PdhValue,
+}
+
+impl ToString for PdhCollectValue {
+    fn to_string(&self) -> String {
+        format!("{} \t {}", self.element.to_string(), self.value.to_string())
+    }
+}
+
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -99,7 +118,7 @@ pub enum PdhValue {
     Str(String),
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct PdhCounterPathElement {
     object_name: String,
     counter_name: String,

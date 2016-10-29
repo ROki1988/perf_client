@@ -14,8 +14,15 @@ fn main() {
                                         PdhCounterPathElementOptions { ..Default::default() })];
 
     let pdhc = PdhController::new(element_list).expect("Can't create Metrics Collector");
-    println!("{:?}",
-             pdhc.into_iter().map(|v| v.to_string()).collect::<Vec<_>>());
+    for item in pdhc.into_iter().map(|v| v.to_string()) {
+        println!("{}", item);
+    }
+}
+
+impl ToString for PdhCounterPathElement {
+    fn to_string(&self) -> String {
+        String::from("PdhCounterPathElement")
+    }
 }
 
 impl ToString for PdhValue {

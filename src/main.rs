@@ -21,7 +21,7 @@ fn main() {
 
 impl ToString for PdhCounterPathElement {
     fn to_string(&self) -> String {
-        String::from("PdhCounterPathElement")
+        format!("{}\\{}", self.object_name, self.counter_name)
     }
 }
 

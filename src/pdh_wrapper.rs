@@ -98,8 +98,8 @@ trait CollectionValue {
 
 #[derive(Debug)]
 pub struct PdhCollectValue {
-    element: PdhCounterPathElement,
-    value: PdhValue,
+    pub element: PdhCounterPathElement,
+    pub value: PdhValue,
 }
 
 impl CollectionValue for PdhCollectValue {

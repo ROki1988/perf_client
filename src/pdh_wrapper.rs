@@ -77,7 +77,7 @@ impl Iterator for PdhControllerIntoIterator {
             pdh_collect_query_data(self.pdhc.hquery);
         }
 
-        let v = self.pdhc
+        let item = self.pdhc
             .items
             .get(self.index)
             .iter()
@@ -91,7 +91,7 @@ impl Iterator for PdhControllerIntoIterator {
             })
             .last();
         self.index += 1;
-        v
+        item
     }
 }
 

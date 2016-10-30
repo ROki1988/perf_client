@@ -4,9 +4,11 @@ extern crate winapi;
 extern crate pdh;
 #[cfg(windows)]
 extern crate widestring;
+extern crate serde;
 
 use winapi::pdh::*;
 use widestring::*;
+use serde::ser;
 
 #[derive(Debug)]
 pub struct PdhCollectionItem {
@@ -126,6 +128,21 @@ pub enum PdhValue {
     Double(f64),
     Str(String),
 }
+
+impl ser::Serialize for PdhValue {
+    #[inline]
+    fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+        where S: ser::Serializer
+    {
+        match *self {
+            PdhValue::LongLong(ref ll) => serializer.serialize_i64(*ll),
+            PdhValue::Long(ref l) => serializer.serialize_i64(*l as i64),
+            PdhValue::Double(ref d) => serializer.serialize_f64(*d),
+            PdhValue::Str(ref s) => serializer.serialize_str(s),
+        }
+    }
+}
+
 
 #[derive(Debug, Default, Clone)]
 pub struct PdhCounterPathElement {

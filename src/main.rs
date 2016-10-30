@@ -7,8 +7,6 @@ extern crate serde_json;
 mod pdh_wrapper;
 
 use pdh_wrapper::*;
-use serde::ser;
-use serde_json::Value;
 use serde_json::builder;
 
 fn main() {
@@ -25,8 +23,8 @@ fn main() {
 
 impl PdhCollectValue {
     fn to_json(&self) -> serde_json::Value {
-        let mut obj = builder::ObjectBuilder::new();
-        obj.insert("object_name".to_string(), self.element.object_name.as_str())
+        builder::ObjectBuilder::new()
+            .insert("object_name".to_string(), self.element.object_name.as_str())
             .insert("counter_name".to_string(),
                     self.element.counter_name.as_str())
             .insert("value".to_string(), &self.value)
@@ -47,20 +45,6 @@ impl ToString for PdhValue {
             PdhValue::Long(ref l) => format!("{:.3}", l),
             PdhValue::Double(ref d) => format!("{:.3}", d),
             PdhValue::Str(ref s) => s.clone(),
-        }
-    }
-}
-
-impl ser::Serialize for PdhValue {
-    #[inline]
-    fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
-        where S: ser::Serializer
-    {
-        match *self {
-            PdhValue::LongLong(ref ll) => serializer.serialize_i64(*ll),
-            PdhValue::Long(ref l) => serializer.serialize_i64(*l as i64),
-            PdhValue::Double(ref d) => serializer.serialize_f64(*d),
-            PdhValue::Str(ref s) => serializer.serialize_str(s),
         }
     }
 }

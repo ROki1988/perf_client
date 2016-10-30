@@ -1,10 +1,13 @@
 extern crate winapi;
 #[cfg(windows)]
 extern crate widestring;
+extern crate serde;
+extern crate serde_json;
 
 mod pdh_wrapper;
 
 use pdh_wrapper::*;
+use serde_json::Map;
 
 fn main() {
 

@@ -5,7 +5,6 @@ extern crate pdh;
 #[cfg(windows)]
 extern crate widestring;
 
-use std;
 use winapi::pdh::*;
 use widestring::*;
 
@@ -48,7 +47,7 @@ impl PdhController {
 
 impl IntoIterator for PdhController {
     type IntoIter = PdhControllerIntoIterator;
-    type Item = PdhCollectValue;
+    type Item = <<Self as IntoIterator>::IntoIter as Iterator>::Item;
 
     fn into_iter(self) -> Self::IntoIter {
         PdhControllerIntoIterator {
@@ -108,7 +107,6 @@ impl CollectionValue for PdhCollectValue {
             element: e.clone(),
             value: v,
         }
-
     }
 }
 

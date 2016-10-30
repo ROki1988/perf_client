@@ -82,12 +82,8 @@ impl Iterator for PdhControllerIntoIterator {
             .get(self.index)
             .iter()
             .flat_map(|c| {
-                pdh_get_formatted_counter_value(c.hcounter, PDH_FMT_DOUBLE).map(|v| {
-                    PdhCollectValue {
-                        element: c.element.clone(),
-                        value: v,
-                    }
-                })
+                pdh_get_formatted_counter_value(c.hcounter, PDH_FMT_DOUBLE)
+                    .map(|v| PdhCollectValue::new(&c.element, v))
             })
             .last();
         self.index += 1;
@@ -95,10 +91,25 @@ impl Iterator for PdhControllerIntoIterator {
     }
 }
 
+trait CollectionValue {
+    fn new(e: &PdhCounterPathElement, v: PdhValue) -> Self;
+}
+
+
 #[derive(Debug)]
 pub struct PdhCollectValue {
     element: PdhCounterPathElement,
     value: PdhValue,
+}
+
+impl CollectionValue for PdhCollectValue {
+    fn new(e: &PdhCounterPathElement, v: PdhValue) -> Self {
+        PdhCollectValue {
+            element: e.clone(),
+            value: v,
+        }
+
+    }
 }
 
 impl ToString for PdhCollectValue {

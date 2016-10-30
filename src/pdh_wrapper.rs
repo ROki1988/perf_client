@@ -47,8 +47,8 @@ impl PdhController {
 }
 
 impl IntoIterator for PdhController {
-    type Item = PdhCollectValue;
     type IntoIter = PdhControllerIntoIterator;
+    type Item = PdhCollectValue;
 
     fn into_iter(self) -> Self::IntoIter {
         PdhControllerIntoIterator {
@@ -72,7 +72,7 @@ pub struct PdhControllerIntoIterator {
 
 impl Iterator for PdhControllerIntoIterator {
     type Item = PdhCollectValue;
-    fn next(&mut self) -> Option<PdhCollectValue> {
+    fn next(&mut self) -> Option<Self::Item> {
         if self.index == 0 {
             pdh_collect_query_data(self.pdhc.hquery);
         }

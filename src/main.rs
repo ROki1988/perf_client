@@ -3,11 +3,13 @@ extern crate winapi;
 extern crate widestring;
 extern crate serde;
 extern crate serde_json;
+extern crate hyper;
 
 mod pdh_wrapper;
 
 use pdh_wrapper::*;
 use serde_json::builder;
+use hyper::client;
 
 fn main() {
     let element_list =
@@ -16,8 +18,13 @@ fn main() {
                                         PdhCounterPathElementOptions { ..Default::default() })];
 
     let pdhc = PdhController::new(element_list).expect("Can't create Metrics Collector");
-    for item in pdhc.into_iter().map(|v| v.to_json()) {
+    let client = hyper::Client::new();
+    for item in pdhc.into_iter().map(|v| v.to_json().to_string()) {
         println!("{}", item);
+        client.post("https://hogehoge.com/perf")
+            .body(item.as_str())
+            .send()
+            .unwrap();
     }
 }
 

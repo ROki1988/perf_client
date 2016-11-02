@@ -10,6 +10,7 @@ winapi = "0.2.8"
 serde = "0.8"
 serde_json = "0.8"
 hyper = "0.8"
+toml = "0.2"
 
 [dependencies.pdh-sys]
 path = "../winapi-rs/lib/pdh"

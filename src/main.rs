@@ -18,7 +18,11 @@ use hyper::client;
 fn main() {
     let config = env::current_dir()
         .map_err(|e| "ERROR CAN'T GET CURRENT DIR".to_string())
-        .and_then(|c| open_config(c.join("config.toml").as_path()));
+        .and_then(|c| open_config(c.join("config.toml").as_path()))
+        .unwrap();
+
+    let endpoint = config.get("Host")
+        .map(|ref s| format!("{}/perf", s));
 
     let element_list =
         vec![PdhCounterPathElement::new(String::from("Memory"),
@@ -27,13 +31,15 @@ fn main() {
 
     let pdhc = PdhController::new(element_list).expect("Can't create Metrics Collector");
     let client = hyper::Client::new();
-    for item in pdhc.into_iter().map(|v| v.to_json().to_string()) {
-        println!("{}", item);
-        client.post("https://hogehoge.com/perf")
-            .body(item.as_str())
-            .send()
-            .unwrap();
-    }
+    endpoint.map(|ref s| {
+        println!("{:?}", s);
+        for item in pdhc.into_iter().map(|v| v.to_json().to_string()) {
+            client.post(s.as_str())
+                .body(item.as_str())
+                .send()
+                .unwrap();
+        }
+    });
 }
 
 fn open_config(file_path: &Path) -> Result<toml::Table, String> {

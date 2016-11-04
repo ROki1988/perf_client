@@ -191,13 +191,15 @@ fn pdh_collect_query_data(hquery: winapi::PDH_HQUERY) -> bool {
 fn pdh_get_formatted_counter_value(hcounter: winapi::PDH_HCOUNTER,
                                    format: winapi::DWORD)
                                    -> Result<PdhValue, winapi::PDH_STATUS> {
+    use std::ptr;
+
     let mut s = winapi::PDH_FMT_COUNTERVALUE {
         CStatus: 0,
         largeValue: 0,
     };
+
     let ret = unsafe {
-        let mut devnul: winapi::DWORD = 0;
-        pdh::PdhGetFormattedCounterValue(hcounter, format, &mut devnul, &mut s)
+        pdh::PdhGetFormattedCounterValue(hcounter, format, ptr::null_mut::<u32>(), &mut s)
     };
 
     if winapi::winerror::SUCCEEDED(ret) {

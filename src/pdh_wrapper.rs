@@ -175,13 +175,12 @@ impl PdhCounterPathElement {
 fn pdh_open_query() -> Result<winapi::PDH_HQUERY, winapi::PDH_STATUS> {
     use std::ptr;
     let mut hquery = winapi::INVALID_HANDLE_VALUE;
-    unsafe {
-        let ret = pdh::PdhOpenQueryW(ptr::null(), 0, &mut hquery);
-        if winapi::winerror::SUCCEEDED(ret) {
-            Ok(hquery)
-        } else {
-            Err(ret)
-        }
+    let ret = unsafe { pdh::PdhOpenQueryW(ptr::null(), 0, &mut hquery) };
+
+    if winapi::winerror::SUCCEEDED(ret) {
+        Ok(hquery)
+    } else {
+        Err(ret)
     }
 }
 
@@ -196,14 +195,15 @@ fn pdh_get_formatted_counter_value(hcounter: winapi::PDH_HCOUNTER,
         CStatus: 0,
         largeValue: 0,
     };
-    unsafe {
+    let ret = unsafe {
         let mut devnul: winapi::DWORD = 0;
-        let ret = pdh::PdhGetFormattedCounterValue(hcounter, format, &mut devnul, &mut s);
-        if winapi::winerror::SUCCEEDED(ret) {
-            Ok(to_value(&s, format))
-        } else {
-            Err(ret)
-        }
+        pdh::PdhGetFormattedCounterValue(hcounter, format, &mut devnul, &mut s)
+    };
+
+    if winapi::winerror::SUCCEEDED(ret) {
+        Ok(to_value(&s, format))
+    } else {
+        Err(ret)
     }
 }
 
@@ -218,13 +218,12 @@ fn to_value(s: &PDH_FMT_COUNTERVALUE, format: winapi::DWORD) -> PdhValue {
 }
 
 fn pdh_close_query(hquery: PDH_HQUERY) -> Result<(), winapi::PDH_STATUS> {
-    unsafe {
-        let ret = pdh::PdhCloseQuery(hquery);
-        if winapi::winerror::SUCCEEDED(ret) {
-            Ok(())
-        } else {
-            Err(ret)
-        }
+    let ret = unsafe { pdh::PdhCloseQuery(hquery) };
+
+    if winapi::winerror::SUCCEEDED(ret) {
+        Ok(())
+    } else {
+        Err(ret)
     }
 }
 
@@ -232,16 +231,16 @@ fn pdh_add_counter(hquery: winapi::PDH_HQUERY,
                    counter_path: &str)
                    -> Result<winapi::PDH_HCOUNTER, winapi::PDH_STATUS> {
     let mut hcounter = winapi::INVALID_HANDLE_VALUE;
-    unsafe {
-        let ret = pdh::PdhAddCounterW(hquery,
-                                      to_wide_chars(counter_path).as_ptr(),
-                                      0,
-                                      &mut hcounter);
-        if winapi::winerror::SUCCEEDED(ret) {
-            Ok(hcounter)
-        } else {
-            Err(ret)
-        }
+    let ret = unsafe {
+        pdh::PdhAddCounterW(hquery,
+                            to_wide_chars(counter_path).as_ptr(),
+                            0,
+                            &mut hcounter)
+    };
+    if winapi::winerror::SUCCEEDED(ret) {
+        Ok(hcounter)
+    } else {
+        Err(ret)
     }
 }
 
@@ -283,14 +282,14 @@ pub fn pdh_make_counter_path(element: &PdhCounterPathElement)
     let mut buff_size = try!(pdh_get_counter_path_buff_size(&mut mut_element));
     let mut buff = vec![ 0u16; (buff_size + 1) as usize ];
 
-    unsafe {
-        let ret = pdh::PdhMakeCounterPathW(&mut mut_element, buff.as_mut_ptr(), &mut buff_size, 0);
-        if winapi::winerror::SUCCEEDED(ret) {
-            buff.truncate(buff_size as usize);
-            Ok(WideString::from_vec(buff).to_string_lossy())
-        } else {
-            Err(ret)
-        }
+    let ret =
+        unsafe { pdh::PdhMakeCounterPathW(&mut mut_element, buff.as_mut_ptr(), &mut buff_size, 0) };
+
+    if winapi::winerror::SUCCEEDED(ret) {
+        buff.truncate(buff_size as usize);
+        Ok(WideString::from_vec(buff).to_string_lossy())
+    } else {
+        Err(ret)
     }
 }
 
@@ -298,14 +297,15 @@ fn pdh_get_counter_path_buff_size(element: PPDH_COUNTER_PATH_ELEMENTS_W)
                                   -> Result<winapi::DWORD, winapi::PDH_STATUS> {
     use std::ptr;
 
-    unsafe {
-        let mut buff_size = 0;
-        let status = pdh::PdhMakeCounterPathW(element, ptr::null_mut::<u16>(), &mut buff_size, 0);
-        if status == 0x800007D2 {
-            Ok(buff_size)
-        } else {
-            Err(status)
-        }
+    let mut buff_size = 0;
+
+    let status =
+        unsafe { pdh::PdhMakeCounterPathW(element, ptr::null_mut::<u16>(), &mut buff_size, 0) };
+
+    if status == 0x800007D2 {
+        Ok(buff_size)
+    } else {
+        Err(status)
     }
 }
 

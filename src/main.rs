@@ -22,7 +22,9 @@ fn main() {
         .unwrap();
 
     let endpoint = config.get("Host")
-        .map(|ref s| format!("{}/perf", s));
+        .into_iter()
+        .flat_map(|ref os| os.as_str().map(|ref oos| format!("{}/perf", oos)))
+        .last();
 
     let element_list =
         vec![PdhCounterPathElement::new(String::from("Memory"),
@@ -32,7 +34,6 @@ fn main() {
     let pdhc = PdhController::new(element_list).expect("Can't create Metrics Collector");
     let client = hyper::Client::new();
     endpoint.map(|ref s| {
-        println!("{:?}", s);
         for item in pdhc.into_iter().map(|v| v.to_json().to_string()) {
             client.post(s.as_str())
                 .body(item.as_str())

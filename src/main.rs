@@ -5,6 +5,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate hyper;
 extern crate toml;
+extern crate rustc_serialize;
 
 mod pdh_wrapper;
 
@@ -19,28 +20,31 @@ fn main() {
     let config = env::current_dir()
         .map_err(|e| "ERROR CAN'T GET CURRENT DIR".to_string())
         .and_then(|c| open_config(c.join("config.toml").as_path()))
-        .unwrap();
+        .expect("Open Config File");
 
     let endpoint = config.get("Host")
         .into_iter()
         .flat_map(|ref os| os.as_str().map(|ref oos| format!("{}/perf", oos)))
-        .last();
+        .last()
+        .expect("Find Host from Config");
 
-    let element_list =
-        vec![PdhCounterPathElement::new(String::from("Memory"),
-                                        String::from("Available Mbytes"),
-                                        PdhCounterPathElementOptions { ..Default::default() })];
+    let element_list = config.get("element")
+        .into_iter()
+        .flat_map(|t_e| toml::decode::<Vec<PdhCounterPathElement>>(t_e.clone()))
+        .last()
+        .expect("Find Element from Config");
 
     let pdhc = PdhController::new(element_list).expect("Can't create Metrics Collector");
     let client = hyper::Client::new();
-    endpoint.map(|ref s| {
-        for item in pdhc.into_iter().map(|v| v.to_json().to_string()) {
-            client.post(s.as_str())
-                .body(item.as_str())
-                .send()
-                .unwrap();
-        }
-    });
+
+    let url = endpoint.as_str();
+    for item in pdhc.into_iter().map(|v| v.to_json().to_string()) {
+        println!("{:?}", item);
+        client.post(url)
+            .body(item.as_str())
+            .send()
+            .unwrap();
+    }
 }
 
 fn open_config(file_path: &Path) -> Result<toml::Table, String> {

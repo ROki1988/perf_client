@@ -5,6 +5,7 @@ extern crate pdh;
 #[cfg(windows)]
 extern crate widestring;
 extern crate serde;
+extern crate rustc_serialize;
 
 use winapi::pdh::*;
 use widestring::*;
@@ -144,14 +145,14 @@ impl ser::Serialize for PdhValue {
 }
 
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, RustcDecodable)]
 pub struct PdhCounterPathElement {
     pub object_name: String,
     pub counter_name: String,
     pub options: PdhCounterPathElementOptions,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, RustcDecodable)]
 pub struct PdhCounterPathElementOptions {
     pub machine_name: Option<String>,
     pub parent_instance: Option<String>,

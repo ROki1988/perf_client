@@ -24,7 +24,7 @@ fn main() {
 
     let endpoint = config.get("Host")
         .into_iter()
-        .flat_map(|ref os| os.as_str().map(|ref oos| format!("{}/perf", oos)))
+        .flat_map(|ref os| os.as_str())
         .last()
         .expect("Find Host from Config");
 
@@ -37,11 +37,11 @@ fn main() {
     let pdhc = PdhController::new(element_list).expect("Can't create Metrics Collector");
     let client = hyper::Client::new();
 
-    let url = endpoint.as_str();
+    let url = format!("{}/perf", endpoint);
     for item in pdhc.into_iter().map(|v| v.to_json().to_string()) {
         println!("{:?}", item);
-        client.post(url)
-            .body(item.as_str())
+        client.post(&url)
+            .body(&item)
             .send()
             .unwrap();
     }

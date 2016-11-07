@@ -39,7 +39,7 @@ fn main() {
 
     let url = format!("{}/perf", endpoint);
     for item in pdhc.into_iter().map(|v| v.to_json().to_string()) {
-        println!("{:?}", item);
+        println!("{}", item);
         client.post(&url)
             .body(&item)
             .send()
@@ -60,12 +60,24 @@ fn open_config(file_path: &Path) -> Result<toml::Table, String> {
 
 impl PdhCollectValue {
     fn to_json(&self) -> serde_json::Value {
-        builder::ObjectBuilder::new()
-            .insert("object_name".to_string(), self.element.object_name.as_str())
-            .insert("counter_name".to_string(),
-                    self.element.counter_name.as_str())
-            .insert("value".to_string(), &self.value)
-            .build()
+        let build_with_option = |x: builder::ObjectBuilder,
+                                 key: &str,
+                                 value: &Option<String>|
+                                 -> builder::ObjectBuilder {
+            if let &Some(ref s) = value {
+                x.insert(key, s)
+            } else {
+                x
+            }
+        };
+
+        let result = builder::ObjectBuilder::new()
+            .insert("object_name", &self.element.object_name)
+            .insert("counter_name", &self.element.counter_name)
+            .insert("value", &self.value);
+        build_with_option(result,
+                          "instance_index",
+                          &self.element.options.instance_name)
     }
 }
 

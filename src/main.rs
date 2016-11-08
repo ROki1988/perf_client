@@ -15,6 +15,7 @@ use std::error::Error;
 use pdh_wrapper::*;
 use serde_json::builder;
 use hyper::client;
+use serde::ser;
 
 fn main() {
     let config = env::current_dir()
@@ -60,10 +61,10 @@ fn open_config(file_path: &Path) -> Result<toml::Table, String> {
 
 impl PdhCollectValue {
     fn to_json(&self) -> serde_json::Value {
-        let build_with_option = |x: builder::ObjectBuilder,
-                                 key: &str,
-                                 value: &Option<String>|
-                                 -> builder::ObjectBuilder {
+        fn build_with_option<T: ser::Serialize>(x: builder::ObjectBuilder,
+                                                key: &str,
+                                                value: &Option<T>)
+                                                -> builder::ObjectBuilder {
             if let &Some(ref s) = value {
                 x.insert(key, s)
             } else {
@@ -75,9 +76,16 @@ impl PdhCollectValue {
             .insert("object_name", &self.element.object_name)
             .insert("counter_name", &self.element.counter_name)
             .insert("value", &self.value);
+        let result =
+            build_with_option(result, "instance_name", &self.element.options.instance_name);
+        let result = build_with_option(result, "machine_name", &self.element.options.machine_name);
+        let result = build_with_option(result,
+                                       "parent_instance",
+                                       &self.element.options.parent_instance);
         build_with_option(result,
                           "instance_index",
-                          &self.element.options.instance_name)
+                          &self.element.options.instance_index)
+            .build()
     }
 }
 

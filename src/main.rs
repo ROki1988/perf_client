@@ -11,15 +11,13 @@ mod pdh_wrapper;
 
 use std::env;
 use std::path::Path;
-use std::error::Error;
 use pdh_wrapper::*;
 use serde_json::builder;
-use hyper::client;
 use serde::ser;
 
 fn main() {
     let config = env::current_dir()
-        .map_err(|e| "ERROR CAN'T GET CURRENT DIR".to_string())
+        .map_err(|e| format!("ERROR CAN'T GET CURRENT DIR: {}", e))
         .and_then(|c| open_config(c.join("config.toml").as_path()))
         .expect("Open Config File");
 
@@ -52,11 +50,11 @@ fn open_config(file_path: &Path) -> Result<toml::Table, String> {
     use std::fs::File;
     use std::io::prelude::*;
 
-    let mut f = try!(File::open(file_path).map_err(|e| "Can't Open file".to_string()));
+    let mut f = try!(File::open(file_path).map_err(|e| format!("Can't Open file: {}", e)));
     let mut buffer = String::new();
 
-    try!(f.read_to_string(&mut buffer).map_err(|e| "Can't read file".to_string()));
-    toml::Parser::new(buffer.as_str()).parse().ok_or("Can't Open file".to_string())
+    try!(f.read_to_string(&mut buffer).map_err(|e| format!("Can't read file: {}", e)));
+    toml::Parser::new(buffer.as_str()).parse().ok_or(format!("Can't parse file: {:?}", file_path))
 }
 
 impl PdhCollectValue {

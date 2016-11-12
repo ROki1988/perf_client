@@ -297,13 +297,26 @@ pub fn pdh_make_counter_path(element: &PdhCounterPathElement)
 }
 
 #[test]
-fn test_pdh_make_counter_path() {
+fn test_pdh_make_counter_path_memory() {
     let element = PdhCounterPathElement::new("Memory".to_string(),
                                              "Available Mbytes".to_string(),
                                              PdhCounterPathElementOptions { ..Default::default() });
     let v = pdh_make_counter_path(&element);
 
     assert_eq!(v, Ok("\\Memory\\Available Mbytes\u{0}".to_string()));
+}
+
+#[test]
+fn test_pdh_make_counter_path_process() {
+    let element = PdhCounterPathElement::new("Process".to_string(),
+                                             "% Processor Time".to_string(),
+                                             PdhCounterPathElementOptions {
+                                                 instance_name: Some("code".to_string()),
+                                                 ..Default::default()
+                                             });
+    let v = pdh_make_counter_path(&element);
+
+    assert_eq!(v, Ok("\\Process(code)\\% Processor Time\u{0}".to_string()));
 }
 
 fn pdh_get_counter_path_buff_size(element: PPDH_COUNTER_PATH_ELEMENTS_W)

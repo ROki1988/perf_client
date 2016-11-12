@@ -39,10 +39,6 @@ fn main() {
     let url = format!("{}/perf", endpoint);
     for item in pdhc.into_iter().map(|v| v.to_json().to_string()) {
         println!("{}", item);
-        client.post(&url)
-            .body(&item)
-            .send()
-            .unwrap();
     }
 }
 

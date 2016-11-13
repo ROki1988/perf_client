@@ -257,8 +257,8 @@ pub fn pdh_make_counter_path(element: &PdhCounterPathElement)
             .map(|ws| ws.into_vec())
             .map_err(|e| winerror::ERROR_BAD_ARGUMENTS as i32)
     };
-    let mut object_name = try!(to_wide_str(element.object_name.as_str()));
-    let mut counter_name = try!(to_wide_str(element.counter_name.as_str()));
+    let mut object_name = to_wide_str(element.object_name.as_str())?;
+    let mut counter_name = to_wide_str(element.counter_name.as_str())?;
 
     let machine_name = element.options
         .machine_name
@@ -282,7 +282,7 @@ pub fn pdh_make_counter_path(element: &PdhCounterPathElement)
         dwInstanceIndex: element.options.instance_index.unwrap_or(0),
     };
 
-    let mut buff_size = try!(pdh_get_counter_path_buff_size(&mut mut_element));
+    let mut buff_size = pdh_get_counter_path_buff_size(&mut mut_element)?;
     let mut buff = vec![ 0u16; (buff_size + 1) as usize ];
 
     let ret =

@@ -46,10 +46,10 @@ fn open_config(file_path: &Path) -> Result<toml::Table, String> {
     use std::fs::File;
     use std::io::prelude::*;
 
-    let mut f = try!(File::open(file_path).map_err(|e| format!("Can't Open file: {}", e)));
+    let mut f = File::open(file_path).map_err(|e| format!("Can't Open file: {}", e))?;
     let mut buffer = String::new();
 
-    try!(f.read_to_string(&mut buffer).map_err(|e| format!("Can't read file: {}", e)));
+    f.read_to_string(&mut buffer).map_err(|e| format!("Can't read file: {}", e))?;
     toml::Parser::new(buffer.as_str()).parse().ok_or(format!("Can't parse file: {:?}", file_path))
 }
 

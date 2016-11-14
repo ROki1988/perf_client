@@ -11,6 +11,41 @@ use winapi::pdh::*;
 use widestring::*;
 use serde::ser;
 
+
+#[test]
+fn test_pdh_controller_memory() {
+    let pdhc = PdhController::new(vec![PdhCounterPathElement::new("Memory".to_string(),
+                                                                  "Available Mbytes".to_string(),
+                                                                  PdhCounterPathElementOptions {
+                                                                      ..Default::default()
+                                                                  })]);
+    assert!(pdhc.into_iter().next().is_some());
+}
+
+#[test]
+fn test_pdh_controller_process() {
+    let pdhc = PdhController::new(vec![PdhCounterPathElement::new("Process".to_string(),
+                                                                  "Available Mbytes".to_string(),
+                                                                  PdhCounterPathElementOptions {
+                                                                      instance_name: Some("explorer"
+                                                                          .to_string()),
+                                                                      ..Default::default()
+                                                                  })]);
+    assert!(pdhc.into_iter().next().is_some());
+}
+
+#[test]
+fn test_pdh_controller_processor() {
+    let pdhc = PdhController::new(vec![PdhCounterPathElement::new("Processor".to_string(),
+                                                                  "% Processor Time".to_string(),
+                                                                  PdhCounterPathElementOptions {
+                                                                      instance_name: Some("_Total"
+                                                                          .to_string()),
+                                                                      ..Default::default()
+                                                                  })]);
+    assert!(pdhc.into_iter().next().is_some());
+}
+
 #[derive(Debug)]
 pub struct PdhCollectionItem {
     element: PdhCounterPathElement,

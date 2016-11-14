@@ -18,19 +18,22 @@ fn test_pdh_controller_memory() {
                                                                   "Available Mbytes".to_string(),
                                                                   PdhCounterPathElementOptions {
                                                                       ..Default::default()
-                                                                  })]);
+                                                                  })])
+        .unwrap();
     assert!(pdhc.into_iter().next().is_some());
 }
 
 #[test]
 fn test_pdh_controller_process() {
     let pdhc = PdhController::new(vec![PdhCounterPathElement::new("Process".to_string(),
-                                                                  "Available Mbytes".to_string(),
+                                                                  "Thread Count".to_string(),
                                                                   PdhCounterPathElementOptions {
                                                                       instance_name: Some("explorer"
                                                                           .to_string()),
                                                                       ..Default::default()
-                                                                  })]);
+                                                                  })])
+        .unwrap();
+
     assert!(pdhc.into_iter().next().is_some());
 }
 
@@ -42,7 +45,10 @@ fn test_pdh_controller_processor() {
                                                                       instance_name: Some("_Total"
                                                                           .to_string()),
                                                                       ..Default::default()
-                                                                  })]);
+                                                                  })])
+        .unwrap();
+
+
     assert!(pdhc.into_iter().next().is_some());
 }
 

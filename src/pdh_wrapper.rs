@@ -20,7 +20,7 @@ fn test_pdh_controller_memory() {
                                                                       ..Default::default()
                                                                   })])
         .unwrap();
-    assert!(pdhc.into_iter().next().is_some());
+    debug_assert!(pdhc.into_iter().next().is_some());
 }
 
 #[test]
@@ -34,7 +34,7 @@ fn test_pdh_controller_process() {
                                                                   })])
         .unwrap();
 
-    assert!(pdhc.into_iter().next().is_some());
+    debug_assert!(pdhc.into_iter().next().is_some());
 }
 
 #[test]
@@ -49,7 +49,7 @@ fn test_pdh_controller_processor() {
         .unwrap();
 
 
-    assert!(pdhc.into_iter().next().is_some());
+    debug_assert!(pdhc.into_iter().next().is_some());
 }
 
 #[derive(Debug)]

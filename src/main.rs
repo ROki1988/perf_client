@@ -3,9 +3,9 @@ extern crate winapi;
 extern crate widestring;
 extern crate serde;
 extern crate serde_json;
-extern crate hyper;
 extern crate toml;
 extern crate rustc_serialize;
+extern crate robots;
 
 mod pdh_wrapper;
 
@@ -14,6 +14,7 @@ use std::path::Path;
 use pdh_wrapper::*;
 use serde_json::builder;
 use serde::ser;
+use robots::actors::ActorSystem;
 
 fn main() {
     let config = env::current_dir()
@@ -33,10 +34,12 @@ fn main() {
         .last()
         .expect("Find Element from Config");
 
-    let pdhc = PdhController::new(element_list).expect("Can't create Metrics Collector");
-    let client = hyper::Client::new();
+    let actor_system = ActorSystem::new("test".to_owned());
+    actor_system.spawn_threads(1);
 
-    let url = format!("{}/perf", endpoint);
+    let pdhc = PdhController::new(element_list).expect("Can't create Metrics Collector");
+
+
     for item in pdhc.into_iter().map(|v| v.to_json().to_string()) {
         println!("{}", item);
     }

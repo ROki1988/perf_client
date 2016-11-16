@@ -103,7 +103,7 @@ impl IntoIterator for PdhController {
 
 impl Drop for PdhController {
     fn drop(&mut self) {
-        pdh_close_query(self.hquery);
+        pdh_close_query(self.hquery).expect("Can't Close PdhQyery");
     }
 }
 
@@ -296,7 +296,7 @@ pub fn pdh_make_counter_path(element: &PdhCounterPathElement)
     let to_wide_str = |s: &str| {
         WideCString::from_str(s)
             .map(|ws| ws.into_vec())
-            .map_err(|e| winerror::ERROR_BAD_ARGUMENTS as i32)
+            .or(Err(winerror::ERROR_BAD_ARGUMENTS as i32))
     };
     let mut object_name = to_wide_str(element.object_name.as_str())?;
     let mut counter_name = to_wide_str(element.counter_name.as_str())?;

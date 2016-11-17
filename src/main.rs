@@ -48,7 +48,8 @@ fn main() {
     let props = Props::new(Arc::new(pdhc), element_list);
     let _actor = actor_system.actor_of(props, "metrics_collector".to_owned());
 
-    actor_system.spawn_threads(1);
+    std::thread::sleep(Duration::from_millis(100));
+    actor_system.shutdown();
 }
 
 fn open_config(file_path: &Path) -> Result<toml::Table, String> {
@@ -112,7 +113,7 @@ impl Actor for MetricsCollector {
     fn pre_start(&self, context: ActorCell) {
         let props = Props::new(Arc::new(Printer::new), ());
         let printer = context.actor_of(props, "printer".to_owned()).unwrap();
-        context.tell(printer, self.pdhc.iter().next().unwrap().clone());
+        context.tell(printer, self.pdhc.iter().collect::<Vec<_>>());
     }
 
     fn receive(&self, _message: Box<Any>, _context: ActorCell) {}
@@ -129,8 +130,11 @@ impl Printer {
 
 impl Actor for Printer {
     fn receive(&self, message: Box<Any>, context: ActorCell) {
-        if let Ok(message) = Box::<Any>::downcast::<PdhCollectValue>(message) {
-            println!("{}", message.to_string());
+        if let Ok(message) = Box::<Any>::downcast::<Vec<PdhCollectValue>>(message) {
+            for item in message.iter() {
+                println!("{}", item.to_string());
+            }
+
             context.stop(context.sender());
         }
     }

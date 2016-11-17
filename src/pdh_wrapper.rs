@@ -20,7 +20,7 @@ fn test_pdh_controller_memory() {
                                                                       ..Default::default()
                                                                   })])
         .unwrap();
-    debug_assert!(pdhc.into_iter().next().is_some());
+    debug_assert!(pdhc.iter().next().is_some());
 }
 
 #[test]
@@ -34,7 +34,7 @@ fn test_pdh_controller_process() {
                                                                   })])
         .unwrap();
 
-    debug_assert!(pdhc.into_iter().next().is_some());
+    debug_assert!(pdhc.iter().next().is_some());
 }
 
 #[test]
@@ -49,7 +49,7 @@ fn test_pdh_controller_processor() {
         .unwrap();
 
 
-    debug_assert!(pdhc.into_iter().next().is_some());
+    debug_assert!(pdhc.iter().next().is_some());
 }
 
 #[derive(Debug)]
@@ -87,15 +87,10 @@ impl PdhController {
             })
             .ok()
     }
-}
 
-impl IntoIterator for PdhController {
-    type IntoIter = PdhControllerIntoIterator;
-    type Item = PdhCollectValue;
-
-    fn into_iter(self) -> Self::IntoIter {
-        PdhControllerIntoIterator {
-            pdhc: self,
+    pub fn iter(&self) -> PdhControllerIterator {
+        PdhControllerIterator {
+            pdhc: &self,
             index: 0,
         }
     }
@@ -108,13 +103,13 @@ impl Drop for PdhController {
 }
 
 #[derive(Debug)]
-pub struct PdhControllerIntoIterator {
-    pdhc: PdhController,
+pub struct PdhControllerIterator<'a> {
+    pdhc: &'a PdhController,
     index: usize,
 }
 
-impl Iterator for PdhControllerIntoIterator {
-    type Item = <PdhController as IntoIterator>::Item;
+impl<'a> Iterator for PdhControllerIterator<'a> {
+    type Item = PdhCollectValue;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index == 0 {
@@ -140,7 +135,7 @@ trait CollectionValue {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PdhCollectValue {
     pub element: PdhCounterPathElement,
     pub value: PdhValue,
@@ -162,7 +157,7 @@ impl ToString for PdhCollectValue {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub enum PdhValue {
     LongLong(i64),

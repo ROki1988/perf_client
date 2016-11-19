@@ -5,22 +5,18 @@ extern crate serde;
 extern crate serde_json;
 extern crate toml;
 extern crate rustc_serialize;
-extern crate robots;
 
 mod pdh_wrapper;
 
 use std::env;
 use std::path::Path;
-use std::any::Any;
-use std::sync::Arc;
-use std::time::Duration;
+use std::thread;
+use std::sync::mpsc;
 
 use pdh_wrapper::*;
 
 use serde_json::builder;
 use serde::ser;
-
-use robots::actors::{Actor, ActorSystem, ActorCell, ActorContext, Props, Message};
 
 fn main() {
     let config = env::current_dir()
@@ -40,16 +36,24 @@ fn main() {
         .last()
         .expect("Find Element from Config");
 
-    let actor_system = ActorSystem::new("test".to_owned());
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let pdhc = PdhController::new(element_list).expect("Can't Create Collector");
+        loop {
+            tx.send(pdhc.iter().collect::<Vec<_>>()).unwrap();
+        }
+    });
 
-    let pdhc = |es: Vec<PdhCounterPathElement>| -> MetricsCollector {
-        MetricsCollector::new(es).expect("Can't create Metrics Collector")
-    };
-    let props = Props::new(Arc::new(pdhc), element_list);
-    let _actor = actor_system.actor_of(props, "metrics_collector".to_owned());
-
-    std::thread::sleep(Duration::from_millis(100));
-    actor_system.shutdown();
+    loop {
+        match rx.recv() {
+            Ok(v) => {
+                for item in v {
+                    println!("{}", item.to_string());
+                }
+            }
+            Err(_) => return,
+        }
+    }
 }
 
 fn open_config(file_path: &Path) -> Result<toml::Table, String> {
@@ -91,52 +95,6 @@ impl PdhCollectValue {
                           "instance_index",
                           &self.element.options.instance_index)
             .build()
-    }
-}
-
-unsafe impl Sync for pdh_wrapper::PdhController {}
-
-unsafe impl Send for pdh_wrapper::PdhController {}
-
-#[derive(Debug)]
-struct MetricsCollector {
-    pdhc: PdhController,
-}
-
-impl MetricsCollector {
-    fn new(element_list: Vec<PdhCounterPathElement>) -> Option<MetricsCollector> {
-        PdhController::new(element_list).map(|c| MetricsCollector { pdhc: c })
-    }
-}
-
-impl Actor for MetricsCollector {
-    fn pre_start(&self, context: ActorCell) {
-        let props = Props::new(Arc::new(Printer::new), ());
-        let printer = context.actor_of(props, "printer".to_owned()).unwrap();
-        context.tell(printer, self.pdhc.iter().collect::<Vec<_>>());
-    }
-
-    fn receive(&self, _message: Box<Any>, _context: ActorCell) {}
-}
-
-#[derive(Debug)]
-struct Printer {}
-
-impl Printer {
-    fn new(_dummy: ()) -> Printer {
-        Printer {}
-    }
-}
-
-impl Actor for Printer {
-    fn receive(&self, message: Box<Any>, context: ActorCell) {
-        if let Ok(message) = Box::<Any>::downcast::<Vec<PdhCollectValue>>(message) {
-            for item in message.iter() {
-                println!("{}", item.to_string());
-            }
-
-            context.stop(context.sender());
-        }
     }
 }
 

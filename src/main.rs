@@ -12,11 +12,12 @@ use std::env;
 use std::path::Path;
 use std::thread;
 use std::sync::mpsc;
-
-use pdh_wrapper::*;
+use std::time::Duration;
 
 use serde_json::builder;
 use serde::ser;
+
+use pdh_wrapper::*;
 
 fn main() {
     let config = env::current_dir()
@@ -41,6 +42,7 @@ fn main() {
         let pdhc = PdhController::new(element_list).expect("Can't Create Collector");
         loop {
             tx.send(pdhc.iter().collect::<Vec<_>>()).unwrap();
+            thread::sleep(Duration::from_millis(1000))
         }
     });
 

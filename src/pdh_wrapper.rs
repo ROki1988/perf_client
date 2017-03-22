@@ -39,16 +39,18 @@ fn test_pdh_controller_process() {
 
 #[test]
 fn test_pdh_controller_processor() {
-    let pdhc = PdhController::new(vec![PdhCounterPathElement::new("Processor".to_string(),
+    let pdhc = PdhController::new(vec![PdhCounterPathElement::new("Process".to_string(),
                                                                   "% Processor Time".to_string(),
                                                                   PdhCounterPathElementOptions {
-                                                                      instance_name: Some("_Total"
+                                                                      instance_name: Some("explorer"
                                                                           .to_string()),
                                                                       ..Default::default()
                                                                   })])
         .unwrap();
 
 
+    println!("hquery = {:?}", pdhc.hquery);
+    println!("hcounter = {:?}", pdhc.items);
     debug_assert!(pdhc.iter().next().is_some());
 }
 
@@ -325,7 +327,7 @@ pub fn pdh_make_counter_path(element: &PdhCounterPathElement)
         unsafe { pdh::PdhMakeCounterPathW(&mut mut_element, buff.as_mut_ptr(), &mut buff_size, 0) };
 
     if winapi::winerror::SUCCEEDED(ret) {
-        buff.truncate(buff_size as usize);
+        buff.truncate(buff_size as usize - 1);
         Ok(WideString::from_vec(buff).to_string_lossy())
     } else {
         Err(ret)
@@ -339,7 +341,7 @@ fn test_pdh_make_counter_path_memory() {
                                              PdhCounterPathElementOptions { ..Default::default() });
     let v = pdh_make_counter_path(&element);
 
-    assert_eq!(v, Ok("\\Memory\\Available Mbytes\u{0}".to_string()));
+    assert_eq!(v, Ok("\\Memory\\Available Mbytes".to_string()));
 }
 
 #[test]
@@ -352,7 +354,7 @@ fn test_pdh_make_counter_path_process() {
                                              });
     let v = pdh_make_counter_path(&element);
 
-    assert_eq!(v, Ok("\\Process(code)\\% Processor Time\u{0}".to_string()));
+    assert_eq!(v, Ok("\\Process(code)\\% Processor Time".to_string()));
 }
 
 fn pdh_get_counter_path_buff_size(element: PPDH_COUNTER_PATH_ELEMENTS_W)
@@ -372,8 +374,5 @@ fn pdh_get_counter_path_buff_size(element: PPDH_COUNTER_PATH_ELEMENTS_W)
 }
 
 fn to_wide_chars(s: &str) -> Vec<u16> {
-    use std::ffi::OsStr;
-    use std::os::windows::ffi::OsStrExt;
-
-    OsStr::new(s).encode_wide().chain(Some(0).into_iter()).collect::<Vec<_>>()
+    WideCString::from_str(s).map(|ws| ws.into_vec()).unwrap()
 }

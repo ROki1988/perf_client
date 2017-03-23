@@ -34,7 +34,7 @@ fn test_pdh_controller_process() {
                                                                   })])
         .unwrap();
 
-    debug_assert!(pdhc.iter().next().is_some());
+    assert!(pdhc.iter().next().is_some());
 }
 
 #[test]
@@ -42,7 +42,7 @@ fn test_pdh_controller_processor() {
     let pdhc = PdhController::new(vec![PdhCounterPathElement::new("Process".to_string(),
                                                                   "% Processor Time".to_string(),
                                                                   PdhCounterPathElementOptions {
-                                                                      instance_name: Some("explorer"
+                                                                      instance_name: Some("_Total"
                                                                           .to_string()),
                                                                       ..Default::default()
                                                                   })])
@@ -51,7 +51,7 @@ fn test_pdh_controller_processor() {
 
     println!("hquery = {:?}", pdhc.hquery);
     println!("hcounter = {:?}", pdhc.items);
-    debug_assert!(pdhc.iter().next().is_some());
+    assert!(pdhc.iter().next().is_some());
 }
 
 #[derive(Debug)]

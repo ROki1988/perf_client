@@ -20,7 +20,7 @@ fn test_pdh_controller_memory() {
                                                                       ..Default::default()
                                                                   })])
         .unwrap();
-    debug_assert!(pdhc.iter().next().is_some());
+    assert!(pdhc.iter().next().is_some());
 }
 
 #[test]

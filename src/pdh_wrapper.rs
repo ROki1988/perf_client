@@ -66,6 +66,13 @@ pub struct PdhController {
     items: Vec<PdhCollectionItem>,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum PdhCollectError {
+    PdhStatus(winapi::PDH_STATUS),
+    WinError(winapi::LONG),
+    Other(String),
+}
+
 impl PdhController {
     pub fn new(path: Vec<PdhCounterPathElement>) -> Option<PdhController> {
         pdh_open_query()
@@ -211,7 +218,7 @@ impl PdhCounterPathElement {
     }
 }
 
-fn pdh_open_query() -> Result<winapi::PDH_HQUERY, winapi::PDH_STATUS> {
+fn pdh_open_query() -> Result<winapi::PDH_HQUERY, PdhCollectError> {
     use std::ptr;
     let mut hquery = winapi::INVALID_HANDLE_VALUE;
     let ret = unsafe { pdh::PdhOpenQueryW(ptr::null(), 0, &mut hquery) };
@@ -219,7 +226,7 @@ fn pdh_open_query() -> Result<winapi::PDH_HQUERY, winapi::PDH_STATUS> {
     if winapi::winerror::SUCCEEDED(ret) {
         Ok(hquery)
     } else {
-        Err(ret)
+        Err(PdhCollectError::PdhStatus(ret))
     }
 }
 
@@ -229,7 +236,7 @@ fn pdh_collect_query_data(hquery: winapi::PDH_HQUERY) -> bool {
 
 fn pdh_get_formatted_counter_value(hcounter: winapi::PDH_HCOUNTER,
                                    format: winapi::DWORD)
-                                   -> Result<PdhValue, winapi::PDH_STATUS> {
+                                   -> Result<PdhValue, PdhCollectError> {
     use std::ptr;
 
     let mut s = winapi::PDH_FMT_COUNTERVALUE {
@@ -244,7 +251,7 @@ fn pdh_get_formatted_counter_value(hcounter: winapi::PDH_HCOUNTER,
     if winapi::winerror::SUCCEEDED(ret) {
         Ok(to_value(&s, format))
     } else {
-        Err(ret)
+        Err(PdhCollectError::PdhStatus(ret))
     }
 }
 
@@ -258,19 +265,19 @@ fn to_value(s: &PDH_FMT_COUNTERVALUE, format: winapi::DWORD) -> PdhValue {
     }
 }
 
-fn pdh_close_query(hquery: PDH_HQUERY) -> Result<(), winapi::PDH_STATUS> {
+fn pdh_close_query(hquery: PDH_HQUERY) -> Result<(), PdhCollectError> {
     let ret = unsafe { pdh::PdhCloseQuery(hquery) };
 
     if winapi::winerror::SUCCEEDED(ret) {
         Ok(())
     } else {
-        Err(ret)
+        Err(PdhCollectError::PdhStatus(ret))
     }
 }
 
 fn pdh_add_counter(hquery: winapi::PDH_HQUERY,
                    counter_path: &str)
-                   -> Result<winapi::PDH_HCOUNTER, winapi::PDH_STATUS> {
+                   -> Result<winapi::PDH_HCOUNTER, PdhCollectError> {
     let mut hcounter = winapi::INVALID_HANDLE_VALUE;
     let ret = unsafe {
         pdh::PdhAddCounterW(hquery,
@@ -281,19 +288,18 @@ fn pdh_add_counter(hquery: winapi::PDH_HQUERY,
     if winapi::winerror::SUCCEEDED(ret) {
         Ok(hcounter)
     } else {
-        Err(ret)
+        Err(PdhCollectError::PdhStatus(ret))
     }
 }
 
-pub fn pdh_make_counter_path(element: &PdhCounterPathElement)
-                             -> Result<String, winapi::PDH_STATUS> {
+pub fn pdh_make_counter_path(element: &PdhCounterPathElement) -> Result<String, PdhCollectError> {
     use std::ptr;
     use winapi::winerror;
 
     let to_wide_str = |s: &str| {
         WideCString::from_str(s)
             .map(|ws| ws.into_vec())
-            .or(Err(winerror::ERROR_BAD_ARGUMENTS as i32))
+            .or(Err(PdhCollectError::WinError(winerror::ERROR_BAD_ARGUMENTS as i32)))
     };
     let mut object_name = to_wide_str(element.object_name.as_str())?;
     let mut counter_name = to_wide_str(element.counter_name.as_str())?;
@@ -328,9 +334,11 @@ pub fn pdh_make_counter_path(element: &PdhCounterPathElement)
 
     if winapi::winerror::SUCCEEDED(ret) {
         buff.truncate(buff_size as usize - 1);
-        Ok(WideString::from_vec(buff).to_string_lossy())
+        WideString::from_vec(buff)
+            .to_string()
+            .map_err(|e| PdhCollectError::Other("FromUtf16Error".to_string()))
     } else {
-        Err(ret)
+        Err(PdhCollectError::PdhStatus(ret))
     }
 }
 
@@ -358,7 +366,7 @@ fn test_pdh_make_counter_path_process() {
 }
 
 fn pdh_get_counter_path_buff_size(element: PPDH_COUNTER_PATH_ELEMENTS_W)
-                                  -> Result<winapi::DWORD, winapi::PDH_STATUS> {
+                                  -> Result<winapi::DWORD, PdhCollectError> {
     use std::ptr;
 
     let mut buff_size = 0;
@@ -369,7 +377,7 @@ fn pdh_get_counter_path_buff_size(element: PPDH_COUNTER_PATH_ELEMENTS_W)
     if status == 0x800007D2 {
         Ok(buff_size)
     } else {
-        Err(status)
+        Err(PdhCollectError::PdhStatus(status))
     }
 }
 

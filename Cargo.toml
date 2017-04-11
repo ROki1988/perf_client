@@ -6,11 +6,12 @@ build = "build.rs"
 
 [dependencies]
 widestring = "0.2.2"
-winapi = "0.2.8"
 serde = "0.8"
 serde_json = "0.8"
 toml = "0.2"
 rustc-serialize = "0.3"
 
-[dependencies.pdh-sys]
-path = "../winapi-rs/lib/pdh"
+[dependencies.winapi]
+path = "../winapi-rs"
+features = ["winerror", "pdh", "handleapi"]
+

@@ -7,8 +7,11 @@ extern crate rustc_serialize;
 
 use winapi::um::pdh;
 use winapi::um::handleapi;
-use winapi::shared::ntdef::*;
-use winapi::shared::minwindef::*;
+use winapi::shared::minwindef::{BOOL, DWORD};
+use winapi::shared::windef::HWND;
+use winapi::shared::wtypesbase::DOUBLE;
+use winapi::shared::guiddef::GUID;
+use winapi::um::winnt::{BOOLEAN, HANDLE, LONG, LONGLONG, LPWSTR};
 use winapi::shared::winerror;
 use widestring::*;
 use serde::ser;
@@ -40,18 +43,53 @@ fn test_pdh_controller_process() {
 
 #[test]
 fn test_pdh_controller_processor() {
+    use std::ptr;
     let pdhc = PdhController::new(vec![PdhCounterPathElement::new("Process".to_string(),
                                                                   "% Processor Time".to_string(),
                                                                   PdhCounterPathElementOptions {
-                                                                      instance_name: Some("_Total"
+                                                                      instance_name: Some("code"
                                                                           .to_string()),
                                                                       ..Default::default()
                                                                   })])
         .unwrap();
 
+    let c = pdhc.items[0].hcounter;
+    unsafe {
+        let mut info = pdh::PDH_COUNTER_INFO_W {
+            dwLength: 0,
+            dwType: 0,
+            CVersion: 0,
+            CStatus: 0,
+            lScale: 0,
+            lDefaultScale: 0,
+            dwUserData: 0,
+            dwQueryUserData: 0,
+            szFullPath: ptr::null_mut::<u16>(),
+            info_union: pdh::PDH_DATA_ITEM_PATH_ELEMENTS_W {
+                ObjectGUID: GUID {
+                    Data1: 0,
+                    Data2: 0,
+                    Data3: 0,
+                    Data4: [0, 0, 0, 0, 0, 0, 0, 0],
+                },
+                dwItemId: 0,
+                szInstanceName: ptr::null_mut::<u16>(),
+                szMachineName: ptr::null_mut::<u16>(),
+            },
+            szExplainText: ptr::null_mut::<u16>(),
+            DataBuffer: [0],
+        };
+        let mut size: DWORD = 0;
 
-    println!("hquery = {:?}", pdhc.hquery);
-    println!("hcounter = {:?}", pdhc.items);
+        pdh::PdhGetCounterInfoW(c, 0, &mut size, ptr::null_mut::<pdh::PDH_COUNTER_INFO_W>());
+        pdh::PdhGetCounterInfoW(c, 0, &mut size, &mut info);
+        println!("szFullPath: {:?}",
+                 WideCString::from_ptr_with_nul(info.szFullPath, 512)
+                     .unwrap()
+                     .as_wide_c_str()
+                     .to_string()
+                     .unwrap());
+    }
     assert!(pdhc.iter().next().is_some());
 }
 
@@ -80,14 +118,12 @@ impl PdhController {
             .map(|q| {
                 let cs = path.into_iter()
                     .flat_map(|e| {
-                        pdh_make_counter_path(&e)
-                            .and_then(|p| pdh_add_counter(q, p.as_str()))
-                            .map(|c| {
-                                PdhCollectionItem {
-                                    element: e,
-                                    hcounter: c,
-                                }
-                            })
+                        pdh_add_counter(q, &e).map(|c| {
+                            PdhCollectionItem {
+                                element: e,
+                                hcounter: c,
+                            }
+                        })
                     })
                     .collect::<Vec<_>>();
                 PdhController {
@@ -278,15 +314,11 @@ fn pdh_close_query(hquery: pdh::PDH_HQUERY) -> Result<(), PdhCollectError> {
 }
 
 fn pdh_add_counter(hquery: pdh::PDH_HQUERY,
-                   counter_path: &str)
+                   counter_element: &PdhCounterPathElement)
                    -> Result<pdh::PDH_HCOUNTER, PdhCollectError> {
     let mut hcounter = handleapi::INVALID_HANDLE_VALUE;
-    let ret = unsafe {
-        pdh::PdhAddCounterW(hquery,
-                            to_wide_chars(counter_path).as_ptr(),
-                            0,
-                            &mut hcounter)
-    };
+    let path = pdh_make_counter_path(counter_element)?;
+    let ret = unsafe { pdh::PdhAddCounterW(hquery, path.as_ptr(), 0, &mut hcounter) };
     if winerror::SUCCEEDED(ret) {
         Ok(hcounter)
     } else {
@@ -294,7 +326,7 @@ fn pdh_add_counter(hquery: pdh::PDH_HQUERY,
     }
 }
 
-pub fn pdh_make_counter_path(element: &PdhCounterPathElement) -> Result<String, PdhCollectError> {
+pub fn pdh_make_counter_path(element: &PdhCounterPathElement) -> Result<Vec<u16>, PdhCollectError> {
     use std::ptr;
     use winapi::shared::winerror;
 
@@ -335,10 +367,12 @@ pub fn pdh_make_counter_path(element: &PdhCounterPathElement) -> Result<String, 
         unsafe { pdh::PdhMakeCounterPathW(&mut mut_element, buff.as_mut_ptr(), &mut buff_size, 0) };
 
     if winerror::SUCCEEDED(ret) {
-        buff.truncate(buff_size as usize - 1);
-        WideString::from_vec(buff)
-            .to_string()
-            .map_err(|e| PdhCollectError::Other("FromUtf16Error".to_string()))
+        let valid = unsafe { pdh::PdhValidatePathW(buff.as_mut_ptr()) };
+        if winerror::SUCCEEDED(valid) {
+            Ok(buff)
+        } else {
+            Err(PdhCollectError::PdhStatus(valid))
+        }
     } else {
         Err(PdhCollectError::PdhStatus(ret))
     }
@@ -349,9 +383,9 @@ fn test_pdh_make_counter_path_memory() {
     let element = PdhCounterPathElement::new("Memory".to_string(),
                                              "Available Mbytes".to_string(),
                                              PdhCounterPathElementOptions { ..Default::default() });
-    let v = pdh_make_counter_path(&element);
+    let v = pdh_make_counter_path(&element).unwrap();
 
-    assert_eq!(v, Ok("\\Memory\\Available Mbytes".to_string()));
+    assert_eq!(WideCString::from_vec_with_nul(v).unwrap(), WideCString::from_str("\\Memory\\Available Mbytes").unwrap());
 }
 
 #[test]
@@ -362,9 +396,9 @@ fn test_pdh_make_counter_path_process() {
                                                  instance_name: Some("code".to_string()),
                                                  ..Default::default()
                                              });
-    let v = pdh_make_counter_path(&element);
+    let v = pdh_make_counter_path(&element).unwrap();
 
-    assert_eq!(v, Ok("\\Process(code)\\% Processor Time".to_string()));
+    assert_eq!(WideCString::from_vec_with_nul(v).unwrap(), WideCString::from_str("\\Process(code)\\% Processor Time").unwrap());
 }
 
 fn pdh_get_counter_path_buff_size(element: pdh::PPDH_COUNTER_PATH_ELEMENTS_W)
@@ -384,5 +418,5 @@ fn pdh_get_counter_path_buff_size(element: pdh::PPDH_COUNTER_PATH_ELEMENTS_W)
 }
 
 fn to_wide_chars(s: &str) -> Vec<u16> {
-    WideCString::from_str(s).map(|ws| ws.into_vec()).unwrap()
+    WideCString::from_str(s).map(|ws| ws.into_vec_with_nul()).unwrap()
 }

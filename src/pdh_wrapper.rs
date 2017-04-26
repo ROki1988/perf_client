@@ -44,10 +44,10 @@ fn test_pdh_controller_process() {
 #[test]
 fn test_pdh_controller_processor() {
     use std::ptr;
-    let pdhc = PdhController::new(vec![PdhCounterPathElement::new("Process".to_string(),
-                                                                  "% Processor Time".to_string(),
+    let pdhc = PdhController::new(vec![PdhCounterPathElement::new("Processor".to_string(),
+                                                                  "% User Time".to_string(),
                                                                   PdhCounterPathElementOptions {
-                                                                      instance_name: Some("code"
+                                                                      instance_name: Some("_Total"
                                                                           .to_string()),
                                                                       ..Default::default()
                                                                   })])
@@ -126,6 +126,7 @@ impl PdhController {
                         })
                     })
                     .collect::<Vec<_>>();
+                pdh_collect_query_data(q);
                 PdhController {
                     hquery: q,
                     items: cs,
@@ -285,6 +286,8 @@ fn pdh_get_formatted_counter_value(hcounter: pdh::PDH_HCOUNTER,
         pdh::PdhGetFormattedCounterValue(hcounter, format, ptr::null_mut::<u32>(), &mut s)
     };
 
+    println!("CStatus: {:x}", s.CStatus);
+
     if winerror::SUCCEEDED(ret) {
         Ok(to_value(&s, format))
     } else {
@@ -385,7 +388,8 @@ fn test_pdh_make_counter_path_memory() {
                                              PdhCounterPathElementOptions { ..Default::default() });
     let v = pdh_make_counter_path(&element).unwrap();
 
-    assert_eq!(WideCString::from_vec_with_nul(v).unwrap(), WideCString::from_str("\\Memory\\Available Mbytes").unwrap());
+    assert_eq!(WideCString::from_vec_with_nul(v).unwrap(),
+               WideCString::from_str("\\Memory\\Available Mbytes").unwrap());
 }
 
 #[test]
@@ -398,7 +402,8 @@ fn test_pdh_make_counter_path_process() {
                                              });
     let v = pdh_make_counter_path(&element).unwrap();
 
-    assert_eq!(WideCString::from_vec_with_nul(v).unwrap(), WideCString::from_str("\\Process(code)\\% Processor Time").unwrap());
+    assert_eq!(WideCString::from_vec_with_nul(v).unwrap(),
+               WideCString::from_str("\\Process(code)\\% Processor Time").unwrap());
 }
 
 fn pdh_get_counter_path_buff_size(element: pdh::PPDH_COUNTER_PATH_ELEMENTS_W)

@@ -53,42 +53,6 @@ fn test_pdh_controller_processor() {
                                                                   })])
         .unwrap();
 
-    let c = pdhc.items[0].hcounter;
-    unsafe {
-        let mut info = pdh::PDH_COUNTER_INFO_W {
-            dwLength: 0,
-            dwType: 0,
-            CVersion: 0,
-            CStatus: 0,
-            lScale: 0,
-            lDefaultScale: 0,
-            dwUserData: 0,
-            dwQueryUserData: 0,
-            szFullPath: ptr::null_mut::<u16>(),
-            info_union: pdh::PDH_DATA_ITEM_PATH_ELEMENTS_W {
-                ObjectGUID: GUID {
-                    Data1: 0,
-                    Data2: 0,
-                    Data3: 0,
-                    Data4: [0, 0, 0, 0, 0, 0, 0, 0],
-                },
-                dwItemId: 0,
-                szInstanceName: ptr::null_mut::<u16>(),
-                szMachineName: ptr::null_mut::<u16>(),
-            },
-            szExplainText: ptr::null_mut::<u16>(),
-            DataBuffer: [0],
-        };
-        let mut size: DWORD = 0;
-
-        pdh::PdhGetCounterInfoW(c, 0, &mut size, ptr::null_mut::<pdh::PDH_COUNTER_INFO_W>());
-        pdh::PdhGetCounterInfoW(c, 0, &mut size, &mut info);
-        println!("szFullPath: {:?}",
-                 WideCString::from_ptr_with_nul(info.szFullPath, 512)
-                     .unwrap()
-                     .as_wide_c_str()
-                     .to_string()
-                     .unwrap());
     }
     assert!(pdhc.iter().next().is_some());
 }
@@ -285,8 +249,6 @@ fn pdh_get_formatted_counter_value(hcounter: pdh::PDH_HCOUNTER,
     let ret = unsafe {
         pdh::PdhGetFormattedCounterValue(hcounter, format, ptr::null_mut::<u32>(), &mut s)
     };
-
-    println!("CStatus: {:x}", s.CStatus);
 
     if winerror::SUCCEEDED(ret) {
         Ok(to_value(&s, format))

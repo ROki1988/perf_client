@@ -52,8 +52,6 @@ fn test_pdh_controller_processor() {
                                                                       ..Default::default()
                                                                   })])
         .unwrap();
-
-    }
     assert!(pdhc.iter().next().is_some());
 }
 

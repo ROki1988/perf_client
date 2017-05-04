@@ -3,18 +3,14 @@ extern crate winapi;
 
 extern crate widestring;
 extern crate serde;
-extern crate rustc_serialize;
 
 use winapi::um::pdh;
 use winapi::um::handleapi;
-use winapi::shared::minwindef::{BOOL, DWORD};
-use winapi::shared::windef::HWND;
-use winapi::shared::wtypesbase::DOUBLE;
-use winapi::shared::guiddef::GUID;
-use winapi::um::winnt::{BOOLEAN, HANDLE, LONG, LONGLONG, LPWSTR};
+use winapi::shared::minwindef::DWORD;
+use winapi::um::winnt::{LONG};
 use winapi::shared::winerror;
 use widestring::*;
-use serde::ser;
+
 
 #[test]
 fn test_pdh_controller_memory() {
@@ -43,7 +39,6 @@ fn test_pdh_controller_process() {
 
 #[test]
 fn test_pdh_controller_processor() {
-    use std::ptr;
     let pdhc = PdhController::new(vec![PdhCounterPathElement::new("Processor".to_string(),
                                                                   "% User Time".to_string(),
                                                                   PdhCounterPathElementOptions {
@@ -68,6 +63,7 @@ pub struct PdhController {
 }
 
 #[derive(Debug, PartialEq)]
+#[allow(dead_code)]
 pub enum PdhCollectError {
     PdhStatus(pdh::PDH_STATUS),
     WinError(LONG),
@@ -166,7 +162,7 @@ impl ToString for PdhCollectValue {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 #[allow(dead_code)]
 pub enum PdhValue {
     LongLong(i64),
@@ -175,10 +171,10 @@ pub enum PdhValue {
     Str(String),
 }
 
-impl ser::Serialize for PdhValue {
+impl serde::ser::Serialize for PdhValue {
     #[inline]
-    fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
-        where S: ser::Serializer
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: serde::ser::Serializer
     {
         match *self {
             PdhValue::LongLong(ref ll) => serializer.serialize_i64(*ll),
@@ -189,15 +185,14 @@ impl ser::Serialize for PdhValue {
     }
 }
 
-
-#[derive(Debug, Default, Clone, RustcDecodable)]
+#[derive(Debug, Default, Clone, Deserialize)]
 pub struct PdhCounterPathElement {
     pub object_name: String,
     pub counter_name: String,
     pub options: PdhCounterPathElementOptions,
 }
 
-#[derive(Debug, Default, Clone, RustcDecodable)]
+#[derive(Debug, Default, Clone, Deserialize)]
 pub struct PdhCounterPathElementOptions {
     pub machine_name: Option<String>,
     pub parent_instance: Option<String>,

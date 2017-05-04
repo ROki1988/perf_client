@@ -2,9 +2,9 @@ extern crate winapi;
 #[cfg(windows)]
 extern crate widestring;
 extern crate serde;
-extern crate serde_json;
+#[macro_use] extern crate serde_derive;
+#[macro_use] extern crate serde_json;
 extern crate toml;
-extern crate rustc_serialize;
 
 mod pdh_wrapper;
 
@@ -13,9 +13,6 @@ use std::path::Path;
 use std::thread;
 use std::sync::mpsc;
 use std::time::Duration;
-
-use serde_json::builder;
-use serde::ser;
 
 use pdh_wrapper::*;
 
@@ -33,7 +30,7 @@ fn main() {
 
     let element_list = config.get("element")
         .into_iter()
-        .flat_map(|t_e| toml::decode::<Vec<PdhCounterPathElement>>(t_e.clone()))
+        .flat_map(|t_e| t_e.clone().try_into::<Vec<PdhCounterPathElement>>())
         .last()
         .expect("Find Element from Config");
 
@@ -58,7 +55,7 @@ fn main() {
     }
 }
 
-fn open_config(file_path: &Path) -> Result<toml::Table, String> {
+fn open_config(file_path: &Path) -> Result<toml::value::Table, String> {
     use std::fs::File;
     use std::io::prelude::*;
 
@@ -66,37 +63,21 @@ fn open_config(file_path: &Path) -> Result<toml::Table, String> {
     let mut buffer = String::new();
 
     f.read_to_string(&mut buffer).map_err(|e| format!("Can't read file: {}", e))?;
-    toml::Parser::new(buffer.as_str()).parse().ok_or(format!("Can't parse file: {:?}", file_path))
+    toml::from_str::<toml::value::Table>(buffer.as_str()).map_err(|_| format!("Can't parse file: {:?}", file_path))
 }
 
 
 impl PdhCollectValue {
     fn to_json(&self) -> serde_json::Value {
-        fn build_with_option<T: ser::Serialize>(x: builder::ObjectBuilder,
-                                                key: &str,
-                                                value: &Option<T>)
-                                                -> builder::ObjectBuilder {
-            if let &Some(ref s) = value {
-                x.insert(key, s)
-            } else {
-                x
-            }
-        };
-
-        let result = builder::ObjectBuilder::new()
-            .insert("object_name", &self.element.object_name)
-            .insert("counter_name", &self.element.counter_name)
-            .insert("value", &self.value);
-        let result =
-            build_with_option(result, "instance_name", &self.element.options.instance_name);
-        let result = build_with_option(result, "machine_name", &self.element.options.machine_name);
-        let result = build_with_option(result,
-                                       "parent_instance",
-                                       &self.element.options.parent_instance);
-        build_with_option(result,
-                          "instance_index",
-                          &self.element.options.instance_index)
-            .build()
+        json!({
+            "object_name": &self.element.object_name,
+            "counter_name": &self.element.counter_name,
+            "value": &self.value,
+            "instance_name": &self.element.options.instance_name,
+            "machine_name": &self.element.options.machine_name,
+            "parent_instance": &self.element.options.parent_instance,
+            "instance_index":  &self.element.options.instance_index
+        })
     }
 }
 

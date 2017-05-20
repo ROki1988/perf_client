@@ -233,11 +233,9 @@ fn pdh_get_formatted_counter_value(hcounter: pdh::PDH_HCOUNTER,
                                    format: DWORD)
                                    -> Result<PdhValue, PdhCollectError> {
     use std::ptr;
+    use std::mem;
 
-    let mut s = pdh::PDH_FMT_COUNTERVALUE {
-        CStatus: 0,
-        largeValue: 0,
-    };
+    let mut s: pdh::PDH_FMT_COUNTERVALUE = unsafe { mem::zeroed() };
 
     let ret = unsafe {
         pdh::PdhGetFormattedCounterValue(hcounter, format, ptr::null_mut::<u32>(), &mut s)
